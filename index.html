@@ -670,7 +670,6 @@ function stealthLaunch() {
 
 function enterUniverse() {
     document.getElementById('game-universe').classList.add('active');
-    document.title = 'potatozone';
 }
 
 // Boot game data silently in background on page load
@@ -679,7 +678,6 @@ boot();
 function exitUniverse() {
     document.getElementById('game-universe').classList.remove('active');
     exitGame();
-    document.title = 'Scientific Calculator';
 }
 
 document.getElementById('game-search').addEventListener('input', renderGrid);
