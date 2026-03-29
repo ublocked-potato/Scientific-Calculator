@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scientific Calculator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0d0d0f;
+            --surface: #141418;
+            --panel: #1a1a1f;
+            --border: #2a2a35;
+            --accent: #4ecca3;
+            --accent2: #e05a5a;
+            --text: #e8e8f0;
+            --dim: #5a5a6e;
+            --display-bg: #080810;
+            --btn-fn: #1e1e2a;
+            --btn-num: #161620;
+            --btn-op: #1c1c28;
+            --btn-eq: #1e3028;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Subtle grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(78,204,163,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(78,204,163,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .calc-shell {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 340px;
+            padding: 20px;
+            box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(78,204,163,0.05), inset 0 1px 0 rgba(255,255,255,0.04);
+            position: relative;
+        }
+
+        /* top label strip */
+        .calc-label {
+            text-align: center;
+            font-size: 9px;
+            letter-spacing: 5px;
+            color: var(--dim);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .calc-label span { color: rgba(78,204,163,0.4); }
+
+        /* ── DISPLAY ── */
+        .display-wrap {
+            background: var(--display-bg);
+            border: 1px solid rgba(78,204,163,0.12);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .display-expr {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--dim);
+            text-align: right;
+            min-height: 16px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .display-main {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 32px;
+            color: var(--text);
+            text-align: right;
+            letter-spacing: -1px;
+            transition: color 0.1s;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .display-main.result-flash { color: var(--accent); }
+        .display-main.error { color: var(--accent2); font-size: 18px; }
+
+        /* blinking cursor dot */
+        .cursor-dot {
+            display: inline-block;
+            width: 2px;
+            height: 28px;
+            background: var(--accent);
+            opacity: 0.7;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* mode indicator */
+        .mode-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .mode-pill {
+            font-size: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 2px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            color: var(--dim);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-transform: uppercase;
+        }
+        .mode-pill.active {
+            border-color: rgba(78,204,163,0.4);
+            color: var(--accent);
+            background: rgba(78,204,163,0.07);
+        }
+
+        /* ── BUTTONS ── */
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        button {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 4px;
+            cursor: pointer;
+            transition: all 0.08s ease;
+            user-select: none;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0);
+            transition: background 0.08s;
+        }
+        button:active::after { background: rgba(255,255,255,0.06); }
+        button:active { transform: scale(0.94); }
+
+        .btn-fn {
+            background: var(--btn-fn);
+            color: #8888aa;
+            font-size: 11px;
+            letter-spacing: 0;
+        }
+        .btn-fn:hover { color: var(--accent); border-color: rgba(78,204,163,0.25); }
+
+        .btn-num {
+            background: var(--btn-num);
+            color: var(--text);
+            font-size: 16px;
+        }
+        .btn-num:hover { border-color: rgba(78,204,163,0.2); }
+
+        .btn-op {
+            background: var(--btn-op);
+            color: #aaaacc;
+            font-size: 16px;
+        }
+        .btn-op:hover { color: var(--accent); border-color: rgba(78,204,163,0.25); }
+
+        .btn-eq {
+            background: rgba(78,204,163,0.1);
+            border-color: rgba(78,204,163,0.3);
+            color: var(--accent);
+            font-size: 18px;
+        }
+        .btn-eq:hover { background: rgba(78,204,163,0.18); }
+
+        .btn-clear {
+            background: rgba(224,90,90,0.08);
+            border-color: rgba(224,90,90,0.25);
+            color: var(--accent2);
+        }
+        .btn-clear:hover { background: rgba(224,90,90,0.15); }
+
+        .btn-back {
+            background: var(--btn-fn);
+            color: #cc8888;
+            font-size: 11px;
+        }
+
+        .btn-zero { grid-column: span 2; }
+
+        /* ── HIDDEN GAME LAYER ── */
+        #game-universe {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #0d0d0f;
+            flex-direction: column;
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        #game-universe.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* re-use potatozone styles inline */
+        .glass { background: rgba(20,20,25,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(128,108,161,0.3); }
+        .game-card { transition: all 0.4s cubic-bezier(0.23,1,0.32,1); cursor: pointer; }
+        .game-card:hover { transform: translateY(-8px); filter: brightness(1.1); }
+
+        #game-overlay-inner {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: #000;
+            flex-direction: column;
+            display: flex;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+        #game-overlay-inner.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: rgba(128,108,161,0.5); border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(15,15,20,0.5); }
+    </style>
+</head>
+<body>
+
+<!-- ══════════ CALCULATOR ══════════ -->
+<div class="calc-shell" id="calculator">
+    <div class="calc-label">sci<span>calc</span> · v2.1</div>
+
+    <div class="display-wrap">
+        <div class="display-expr" id="expr"></div>
+        <div class="display-main" id="display">0<span class="cursor-dot"></span></div>
+    </div>
+
+    <div class="mode-row">
+        <div class="mode-pill active" id="pill-deg" onclick="setAngleMode('deg')">DEG</div>
+        <div class="mode-pill" id="pill-rad" onclick="setAngleMode('rad')">RAD</div>
+    </div>
+
+    <div class="btn-grid">
+        <!-- Row 1: scientific fns -->
+        <button class="btn-fn" onclick="inputFn('sin(')">sin</button>
+        <button class="btn-fn" onclick="inputFn('cos(')">cos</button>
+        <button class="btn-fn" onclick="inputFn('tan(')">tan</button>
+        <button class="btn-fn" onclick="inputFn('log(')">log</button>
+        <button class="btn-fn" onclick="inputFn('ln(')">ln</button>
+
+        <!-- Row 2 -->
+        <button class="btn-fn" onclick="inputFn('asin(')">sin⁻¹</button>
+        <button class="btn-fn" onclick="inputFn('acos(')">cos⁻¹</button>
+        <button class="btn-fn" onclick="inputFn('atan(')">tan⁻¹</button>
+        <button class="btn-fn" onclick="inputFn('sqrt(')">√</button>
+        <button class="btn-fn" onclick="inputFn('^')">xʸ</button>
+
+        <!-- Row 3 -->
+        <button class="btn-fn" onclick="inputFn('pi')">π</button>
+        <button class="btn-fn" onclick="inputFn('e')">e</button>
+        <button class="btn-fn" onclick="inputFn('(')"> ( </button>
+        <button class="btn-fn" onclick="inputFn(')')"> ) </button>
+        <button class="btn-fn" onclick="inputFn('%')">%</button>
+
+        <!-- Row 4 -->
+        <button class="btn-clear" onclick="clearAll()">AC</button>
+        <button class="btn-back btn-fn" onclick="backspace()">⌫</button>
+        <button class="btn-fn" onclick="negate()">±</button>
+        <button class="btn-op" onclick="inputFn('/')">÷</button>
+        <button class="btn-op" onclick="inputFn('*')">×</button>
+
+        <!-- Row 5 -->
+        <button class="btn-num" onclick="inputDigit('7')">7</button>
+        <button class="btn-num" onclick="inputDigit('8')">8</button>
+        <button class="btn-num" onclick="inputDigit('9')">9</button>
+        <button class="btn-op" style="grid-column: span 2;" onclick="inputFn('-')">−</button>
+
+        <!-- Row 6 -->
+        <button class="btn-num" onclick="inputDigit('4')">4</button>
+        <button class="btn-num" onclick="inputDigit('5')">5</button>
+        <button class="btn-num" onclick="inputDigit('6')">6</button>
+        <button class="btn-op" style="grid-column: span 2;" onclick="inputFn('+')">+</button>
+
+        <!-- Row 7 -->
+        <button class="btn-num" onclick="inputDigit('1')">1</button>
+        <button class="btn-num" onclick="inputDigit('2')">2</button>
+        <button class="btn-num" onclick="inputDigit('3')">3</button>
+        <button class="btn-eq" style="grid-column: span 2; grid-row: span 2;" onclick="calculate()">=</button>
+
+        <!-- Row 8 -->
+        <button class="btn-num btn-zero" onclick="inputDigit('0')">0</button>
+        <button class="btn-num" onclick="inputDot()">.</button>
+    </div>
+</div>
+
+
+<!-- ══════════ HIDDEN: POTATOZONE ══════════ -->
+<div id="game-universe">
+    <header class="glass sticky top-0 z-50 px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-6" style="font-family:'Montserrat',sans-serif;">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:40px;height:40px;background:#806CA1;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;box-shadow:0 0 30px rgba(128,108,161,0.25)">PZ</div>
+            <span style="font-size:22px;font-weight:700;letter-spacing:-1px;color:#fff">potato<span style="color:#806CA1">zone</span></span>
+        </div>
+
+        <div style="flex:1;max-width:500px;width:100%;display:flex;align-items:center;gap:12px;background:rgba(26,26,31,0.8);border-radius:99px;padding:8px 20px;border:1px solid rgba(128,108,161,0.2);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="game-search" placeholder="Search the library..." style="background:transparent;border:none;outline:none;flex:1;font-size:13px;color:#e2e8f0;font-family:'Rajdhani',sans-serif;">
+            <select id="game-sort" style="background:transparent;border:none;outline:none;font-size:11px;font-weight:700;color:#806CA1;cursor:pointer;">
+                <option value="pop">Popular</option>
+                <option value="az">A-Z</option>
+            </select>
+        </div>
+
+        <button onclick="exitUniverse()" style="padding:8px 18px;background:rgba(26,26,31,0.8);border:1px solid rgba(128,108,161,0.3);color:#e2e8f0;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:2px;cursor:pointer;font-family:'Rajdhani',sans-serif;">EXIT</button>
+    </header>
+
+    <main style="max-width:1400px;margin:0 auto;padding:40px 40px;overflow-y:auto;height:calc(100vh - 70px);">
+        <div id="grid-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:28px;">
+            <div style="grid-column:1/-1;text-align:center;padding:80px 0;color:#555;font-family:'Share Tech Mono',monospace;font-size:13px;animation:pulse 2s ease infinite;">Syncing with GitHub Assets...</div>
+        </div>
+    </main>
+</div>
+
+<!-- game player overlay -->
+<div id="game-overlay-inner">
+    <div style="padding:12px 32px;background:rgba(20,20,25,0.95);backdrop-filter:blur(20px);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(128,108,161,0.3);">
+        <div id="game-title-inner" style="font-weight:700;color:#fff;font-family:'Montserrat',sans-serif;"></div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="stealthLaunch()" style="font-size:10px;font-weight:700;letter-spacing:3px;padding:8px 16px;background:rgba(30,30,40,0.8);border:1px solid #444;border-radius:6px;color:#ccc;cursor:pointer;">STEALTH TAB</button>
+            <button onclick="exitGame()" style="font-size:10px;font-weight:700;letter-spacing:3px;padding:8px 16px;background:#c0392b;border:none;border-radius:6px;color:#fff;cursor:pointer;">CLOSE</button>
+        </div>
+    </div>
+    <div id="game-frame-host" style="flex:1;width:100%;background:#000;position:relative;"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CALCULATOR LOGIC
+═══════════════════════════════════════════ */
+let expr = '';
+let angleMode = 'deg';
+let justCalculated = false;
+let consecutiveZeros = 0; // counts ONLY back-to-back zero button presses
+
+const display = document.getElementById('display');
+const exprEl  = document.getElementById('expr');
+
+function updateDisplay(val) {
+    display.innerHTML = val + '<span class="cursor-dot"></span>';
+}
+
+function setAngleMode(m) {
+    angleMode = m;
+    document.getElementById('pill-deg').classList.toggle('active', m === 'deg');
+    document.getElementById('pill-rad').classList.toggle('active', m === 'rad');
+}
+
+function inputDigit(d) {
+    if (d === '0') {
+        consecutiveZeros++;
+        // Only fire when the last 3 presses were ALL zeros, nothing else between them
+        if (consecutiveZeros === 3) {
+            consecutiveZeros = 0;
+            // Remove the 2 zeros already added to expr (third hasn't been added yet)
+            expr = expr.slice(0, -2);
+            enterUniverse();
+            return;
+        }
+    } else {
+        consecutiveZeros = 0; // any other digit breaks the streak
+    }
+
+    if (justCalculated) { expr = ''; justCalculated = false; }
+    if (expr === '0') expr = '';
+    expr += d;
+    updateDisplay(expr || '0');
+    exprEl.textContent = '';
+}
+
+function inputDot() {
+    consecutiveZeros = 0;
+    if (justCalculated) { expr = '0'; justCalculated = false; }
+    // don't double-dot last segment
+    const lastNum = expr.split(/[\+\-\*\/\(\)^%]/).pop();
+    if (lastNum.includes('.')) return;
+    if (!expr || /[\+\-\*\/\(]$/.test(expr)) expr += '0';
+    expr += '.';
+    updateDisplay(expr);
+}
+
+function inputFn(fn) {
+    consecutiveZeros = 0;
+    if (justCalculated && /[\d\)]/.test(fn)) { /* allow chaining */ }
+    if (justCalculated && /[\+\-\*\/\^%]/.test(fn)) { justCalculated = false; }
+    else if (justCalculated && /[a-z\(]/.test(fn)) { expr = ''; justCalculated = false; }
+    expr += fn;
+    updateDisplay(expr);
+}
+
+function backspace() {
+    consecutiveZeros = 0;
+    if (justCalculated) { clearAll(); return; }
+    expr = expr.slice(0, -1);
+    updateDisplay(expr || '0');
+}
+
+function clearAll() {
+    consecutiveZeros = 0;
+    expr = '';
+    justCalculated = false;
+    display.className = 'display-main';
+    updateDisplay('0');
+    exprEl.textContent = '';
+}
+
+function negate() {
+    consecutiveZeros = 0;
+    if (!expr || expr === '0') return;
+    if (expr.startsWith('-')) expr = expr.slice(1);
+    else expr = '-' + expr;
+    updateDisplay(expr);
+}
+
+function toRad(x) { return angleMode === 'deg' ? x * Math.PI / 180 : x; }
+function fromRad(x) { return angleMode === 'deg' ? x * 180 / Math.PI : x; }
+
+function calculate() {
+    consecutiveZeros = 0;
+    if (!expr) return;
+
+    exprEl.textContent = expr + ' =';
+    let evalExpr = expr
+        .replace(/pi/g, '(' + Math.PI + ')')
+        .replace(/\be\b/g, '(' + Math.E + ')')
+        .replace(/\^/g, '**')
+        .replace(/sin\(/g, '__sin(')
+        .replace(/cos\(/g, '__cos(')
+        .replace(/tan\(/g, '__tan(')
+        .replace(/asin\(/g, '__asin(')
+        .replace(/acos\(/g, '__acos(')
+        .replace(/atan\(/g, '__atan(')
+        .replace(/sqrt\(/g, '__sqrt(')
+        .replace(/log\(/g, '__log(')
+        .replace(/ln\(/g, '__ln(')
+        .replace(/%/g, '/100');
+
+    const fns = {
+        __sin:  x => Math.sin(toRad(x)),
+        __cos:  x => Math.cos(toRad(x)),
+        __tan:  x => Math.tan(toRad(x)),
+        __asin: x => fromRad(Math.asin(x)),
+        __acos: x => fromRad(Math.acos(x)),
+        __atan: x => fromRad(Math.atan(x)),
+        __sqrt: x => Math.sqrt(x),
+        __log:  x => Math.log10(x),
+        __ln:   x => Math.log(x),
+    };
+
+    try {
+        // Safe eval scope
+        const fn = new Function(
+            ...Object.keys(fns), 'expr',
+            'return eval(expr)'
+        );
+        let result = fn(...Object.values(fns), evalExpr);
+
+        if (!isFinite(result)) throw new Error('Math error');
+        result = parseFloat(result.toPrecision(12));
+        if (Number.isInteger(result)) result = result.toString();
+        else result = result.toString();
+
+        expr = result;
+        justCalculated = true;
+        display.className = 'display-main result-flash';
+        updateDisplay(result);
+        setTimeout(() => display.className = 'display-main', 400);
+    } catch(e) {
+        display.className = 'display-main error';
+        display.innerHTML = 'Error';
+        setTimeout(() => { display.className = 'display-main'; updateDisplay(expr || '0'); }, 1200);
+    }
+}
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+    // Don't steal keypresses from game inputs
+    if (document.getElementById('game-universe').classList.contains('active')) return;
+
+    const k = e.key;
+    if (/^[0-9]$/.test(k)) { inputDigit(k); return; }
+    if (k === '.') { inputDot(); return; }
+    if (k === '+') { inputFn('+'); return; }
+    if (k === '-') { inputFn('-'); return; }
+    if (k === '*') { inputFn('*'); return; }
+    if (k === '/') { e.preventDefault(); inputFn('/'); return; }
+    if (k === '(') { inputFn('('); return; }
+    if (k === ')') { inputFn(')'); return; }
+    if (k === '^') { inputFn('^'); return; }
+    if (k === '%') { inputFn('%'); return; }
+    if (k === 'Enter' || k === '=') { calculate(); return; }
+    if (k === 'Backspace') { backspace(); return; }
+    if (k === 'Escape') { clearAll(); return; }
+});
+
+
+/* ═══════════════════════════════════════════
+   POTATOZONE LOGIC
+═══════════════════════════════════════════ */
+const API = {
+    zones:   "https://cdn.jsdelivr.net/gh/gn-math/assets@main/zones.json",
+    covers:  "https://cdn.jsdelivr.net/gh/gn-math/covers@main",
+    html:    "https://cdn.jsdelivr.net/gh/gn-math/html@main",
+    stats:   "https://data.jsdelivr.net/v1/stats/packages/gh/gn-math/html@main/files?period=year",
+    commits: "https://api.github.com/repos/gn-math/assets/commits"
+};
+
+let games_data = [];
+let popularity_data = {};
+let active_html = "";
+
+async function boot() {
+
+    let version = "";
+    try {
+        const commitFetch = await fetch(API.commits);
+        if (commitFetch.ok) {
+            const commits = await commitFetch.json();
+            if (Array.isArray(commits) && commits[0]?.sha) version = `?v=${commits[0].sha}`;
+        }
+    } catch(e) {}
+
+    try {
+        const [dbRes, statsRes] = await Promise.allSettled([
+            fetch(API.zones + version).then(r => r.json()),
+            fetch(API.stats).then(r => r.json())
+        ]);
+
+        if (statsRes.status === "fulfilled" && statsRes.value.files) {
+            statsRes.value.files.forEach(f => {
+                popularity_data[f.name.split('.')[0]] = f.total;
+            });
+        }
+
+        if (dbRes.status === "fulfilled" && Array.isArray(dbRes.value)) {
+            games_data = dbRes.value
+                .filter(item => item.id && item.url && item.url.includes("{HTML_URL}"))
+                .map(item => {
+                    const cleanId = (item.id + "").replace(".html", "");
+                    let finalUrl = item.url.replace("{HTML_URL}", API.html).replace("{COVER_URL}", API.covers);
+                    const processed_cover = (item.cover || "").replace("{COVER_URL}", API.covers).replace("{HTML_URL}", API.html);
+                    return { ...item, id: cleanId, processed_url: finalUrl, processed_cover, hits: popularity_data[cleanId] || 0 };
+                });
+        }
+        renderGrid();
+    } catch(e) {
+        document.getElementById('grid-container').innerHTML =
+            `<div style="grid-column:1/-1;text-align:center;padding:80px 0;color:#555;">Failed to connect to asset server.</div>`;
+    }
+}
+
+function renderGrid() {
+    const grid   = document.getElementById('grid-container');
+    const search = document.getElementById('game-search').value.toLowerCase();
+    const sort   = document.getElementById('game-sort').value;
+
+    let filtered = games_data.filter(g => (g.name || "").toLowerCase().includes(search));
+    if (sort === 'pop') filtered.sort((a, b) => b.hits - a.hits);
+    if (sort === 'az')  filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+    if (!filtered.length) {
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:80px 0;color:#555;">No games found.</div>`;
+        return;
+    }
+
+    grid.innerHTML = filtered.map(game => `
+        <div class="game-card" onclick="loadGame('${game.id}')">
+            <div style="aspect-ratio:4/5;overflow:hidden;border-radius:14px;background:#1a1a1f;position:relative;box-shadow:0 8px 30px rgba(0,0,0,0.6);border:1px solid rgba(128,108,161,0.15);">
+                <img src="${game.processed_cover}" style="width:100%;height:100%;object-fit:cover;filter:grayscale(0.3);transition:filter 0.4s;" loading="lazy" onmouseover="this.style.filter='grayscale(0)'" onmouseout="this.style.filter='grayscale(0.3)'">
+            </div>
+            <div style="margin-top:10px;">
+                <p style="font-size:9px;font-weight:700;color:#806CA1;text-transform:uppercase;letter-spacing:3px;margin-bottom:3px;font-family:'Share Tech Mono',monospace;">${game.hits > 5000 ? 'Hot' : 'Premium'}</p>
+                <p style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Rajdhani',sans-serif;">${game.name}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadGame(id) {
+    const game = games_data.find(g => g.id === id);
+    if (!game) return;
+
+    document.getElementById('game-title-inner').innerText = game.name;
+    const overlay = document.getElementById('game-overlay-inner');
+    overlay.classList.add('active');
+
+    try {
+        const res = await fetch(game.processed_url);
+        if (!res.ok) throw new Error("404");
+        let html = await res.text();
+
+        const injection = `
+            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+            <style>* { font-family: 'Montserrat', sans-serif !important; } body, html { margin:0;padding:0;width:100vw;height:100vh;overflow:hidden;background:#000; } iframe, canvas { width:100% !important;height:100% !important; }</style>
+        `;
+        active_html = html.includes('<head>') ? html.replace('<head>', `<head>${injection}`) : injection + html;
+
+        const host = document.getElementById('game-frame-host');
+        host.innerHTML = `<iframe id="game-src" style="width:100%;height:100%;border:none;"></iframe>`;
+        const frame = document.getElementById('game-src');
+        const doc = frame.contentWindow.document;
+        doc.open(); doc.write(active_html); doc.close();
+    } catch(e) {
+        alert("Game file not found. (404)");
+        exitGame();
+    }
+}
+
+function exitGame() {
+    document.getElementById('game-overlay-inner').classList.remove('active');
+    document.getElementById('game-frame-host').innerHTML = '';
+}
+
+function stealthLaunch() {
+    if (!active_html) return;
+    const win = window.open('about:blank', '_blank');
+    if (!win) return;
+    win.document.open(); win.document.write(active_html); win.document.close();
+}
+
+function enterUniverse() {
+    document.getElementById('game-universe').classList.add('active');
+    document.title = 'potatozone';
+}
+
+// Boot game data silently in background on page load
+boot();
+
+function exitUniverse() {
+    document.getElementById('game-universe').classList.remove('active');
+    exitGame();
+    document.title = 'Scientific Calculator';
+}
+
+document.getElementById('game-search').addEventListener('input', renderGrid);
+document.getElementById('game-sort').addEventListener('change', renderGrid);
+</script>
+</body>
+</html>
